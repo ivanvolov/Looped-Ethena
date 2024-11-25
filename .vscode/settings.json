@@ -18,8 +18,9 @@
     // "**/lib": true
   },
   "git.ignoredRepositories": [
-    "https://github.com/foundry-rs/forge-std",
-    "/Users/ivanvolovik/p🗂️/hh🦔/ethena/lib/forge-std"
+    "/Users/ivanvolovik/p🗂️/hh🦔/ethena/lib/forge-std",
+    "/Users/ivanvolovik/p🗂️/hh🦔/ethena/lib/aave-v3-origin",
+    "/Users/ivanvolovik/p🗂️/hh🦔/ethena/lib/openzeppelin-contracts"
   ],
   "cSpell.enabled": true
 }

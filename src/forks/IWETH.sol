@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import {IERC20Minimal} from "v4-core/interfaces/external/IERC20Minimal.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-interface IWETH is IERC20Minimal {
+interface IWETH is IERC20 {
     function withdraw(uint256 wad) external;
 
     function deposit() external payable;
