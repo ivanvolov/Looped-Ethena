@@ -9,8 +9,12 @@ import {ALMTestBase} from "@test/core/ALMTestBase.sol";
 import {ALM} from "@src/ALM.sol";
 import {ALMBaseLib} from "@src/libraries/ALMBaseLib.sol";
 import {IALM} from "@src/interfaces/IALM.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract ALMTest is ALMTestBase {
+    using SafeERC20 for IERC20;
+
     string MAINNET_RPC_URL = vm.envString("MAINNET_RPC_URL");
 
     function setUp() public {
@@ -20,7 +24,6 @@ contract ALMTest is ALMTestBase {
 
         create_accounts_and_tokens();
         init_alm();
-        approve_accounts();
     }
 
     uint256 amountToDep = 100 ether;
@@ -41,36 +44,48 @@ contract ALMTest is ALMTestBase {
     }
 
     function test_aave_lending_adapter_long() public {
-        // ** Enable Alice to call the adapter
-        // vm.prank(deployer.addr);
-        // lendingAdapter.addAuthorizedCaller(address(alice.addr));
-        // // ** Approve to Morpho
-        // vm.startPrank(alice.addr);
-        // WETH.approve(address(lendingAdapter), type(uint256).max);
-        // USDC.approve(address(lendingAdapter), type(uint256).max);
-        // // ** Add collateral
-        // uint256 wethToSupply = 4000 * 1e18;
-        // deal(address(WETH), address(alice.addr), wethToSupply);
-        // lendingAdapter.addCollateralLong(wethToSupply);
-        // assertApproxEqAbs(lendingAdapter.getCollateralLong(), wethToSupply, 1e1);
-        // assertApproxEqAbs(lendingAdapter.getBorrowedLong(), 0, 1e1);
-        // assertEqBalanceStateZero(alice.addr);
-        // // ** Borrow
-        // uint256 usdcToBorrow = ((wethToSupply * 4500) / 1e12) / 2;
-        // lendingAdapter.borrowLong(usdcToBorrow);
-        // assertApproxEqAbs(lendingAdapter.getCollateralLong(), wethToSupply, 1e1);
-        // assertApproxEqAbs(lendingAdapter.getBorrowedLong(), usdcToBorrow, 1e1);
-        // assertEqBalanceState(alice.addr, 0, usdcToBorrow);
-        // // ** Repay
-        // lendingAdapter.repayLong(usdcToBorrow);
-        // assertApproxEqAbs(lendingAdapter.getCollateralLong(), wethToSupply, 1e1);
-        // assertApproxEqAbs(lendingAdapter.getBorrowedLong(), 0, 1e1);
-        // assertEqBalanceStateZero(alice.addr);
-        // // ** Remove collateral
-        // lendingAdapter.removeCollateralLong(wethToSupply);
-        // assertApproxEqAbs(lendingAdapter.getCollateralLong(), 0, 1e1);
-        // assertApproxEqAbs(lendingAdapter.getBorrowedLong(), 0, 1e1);
-        // assertEqBalanceState(alice.addr, wethToSupply, 0);
-        // vm.stopPrank();
+        // ** Approve
+        vm.startPrank(alice.addr);
+        WETH.approve(address(alm), type(uint256).max);
+        USDT.forceApprove(address(alm), type(uint256).max);
+        USDe.approve(address(alm), type(uint256).max);
+
+        USDT.forceApprove(ALMBaseLib.SWAP_ROUTER, type(uint256).max);
+        USDe.forceApprove(ALMBaseLib.SWAP_ROUTER, type(uint256).max);
+
+        // ** Add WETH collateral
+        uint256 wethToSupply = 100 * 1e18;
+        deal(address(WETH), address(alice.addr), wethToSupply);
+        alm.addCollateralWM(wethToSupply);
+        assertApproxEqAbs(alm.getCollateralWM(), wethToSupply, 1e1);
+        assertApproxEqAbs(alm.getBorrowedWM(), 0, 1e1);
+        assertEqBalanceStateZero(alice.addr);
+
+        // ** Borrow USDT
+        uint256 usdtToBorrow = ((wethToSupply * 3400) / 1e12) / 2;
+        alm.borrowWM(usdtToBorrow);
+        assertApproxEqAbs(alm.getCollateralWM(), wethToSupply, 1e1);
+        assertApproxEqAbs(alm.getBorrowedWM(), usdtToBorrow, 1e1);
+        assertEqBalanceState(alice.addr, 0, usdtToBorrow);
+
+        // ** Swap USDT => USDe
+        ALMBaseLib.swapExactInputEP(address(USDT), address(USDe), USDT.balanceOf(address(alice.addr)), alice.addr);
+        assertEqBalanceState(alice.addr, 0, 0, 169774087752505746850814);
+
+        // ** Add USDe collateral
+        uint256 balanceBefore = USDe.balanceOf(address(alice.addr));
+        alm.addCollateralEM(balanceBefore);
+        assertApproxEqAbs(alm.getCollateralEM(), balanceBefore, 1e1);
+        assertApproxEqAbs(alm.getBorrowedEM(), usdtToBorrow, 1e1);
+        assertEqBalanceStateZero(alice.addr);
+
+        // ** Borrow USDT
+        uint256 usdtToBorrow2 = balanceBefore / 1e12 / 2;
+        alm.borrowEM(usdtToBorrow2);
+        assertApproxEqAbs(alm.getCollateralEM(), balanceBefore, 1e1);
+        assertApproxEqAbs(alm.getBorrowedEM(), usdtToBorrow + usdtToBorrow2, 1e1);
+        assertEqBalanceState(alice.addr, 0, usdtToBorrow2);
+
+        vm.stopPrank();
     }
 }

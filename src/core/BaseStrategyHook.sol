@@ -7,17 +7,15 @@ import {ALMBaseLib} from "@src/libraries/ALMBaseLib.sol";
 import {IWETH} from "@forks/IWETH.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IALM} from "@src/interfaces/IALM.sol";
+import {AaveLendingAdapter} from "@src/core/AaveLendingAdapter.sol";
 
-abstract contract BaseStrategyHook is IALM {
-    IWETH WETH = IWETH(ALMBaseLib.WETH);
-    IERC20 USDC = IERC20(ALMBaseLib.USDC);
-
+abstract contract BaseStrategyHook is AaveLendingAdapter, IALM {
     address public immutable deployer;
 
     bool public paused = false;
     bool public shutdown = false;
 
-    constructor() {
+    constructor() AaveLendingAdapter() {
         deployer = msg.sender;
     }
 
