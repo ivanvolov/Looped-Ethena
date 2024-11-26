@@ -29,79 +29,75 @@ contract AaveLendingAdapter {
         USDe.approve(getPool(), type(uint256).max);
     }
 
-    function getPool() public view returns (address) {
+    function getPool() internal view returns (address) {
         return provider.getPool();
     }
 
-    // ** Long market
+    // ** WETH-USDT side
 
-    function getBorrowedWM() public view returns (uint256) {
+    function getBorrowedWM() internal view returns (uint256) {
         (, , address variableDebtTokenAddress) = getAssetAddresses(address(USDT));
         return IERC20(variableDebtTokenAddress).balanceOf(address(this));
     }
 
-    function getCollateralWM() public view returns (uint256) {
+    function getCollateralWM() internal view returns (uint256) {
         (address aTokenAddress, , ) = getAssetAddresses(address(WETH));
         return IERC20(aTokenAddress).balanceOf(address(this));
     }
 
-    function borrowWM(uint256 amount) public {
+    function borrowWM(uint256 amount) internal {
         IPool(getPool()).borrow(address(USDT), amount, 2, 0, address(this)); // Interest rate mode: 2 = variable
-        USDT.safeTransfer(msg.sender, amount);
     }
 
-    function addCollateralWM(uint256 amount) public {
-        WETH.transferFrom(msg.sender, address(this), amount);
+    function addCollateralWM(uint256 amount) internal {
         IPool(getPool()).supply(address(WETH), amount, address(this), 0);
     }
 
-    // function repayLong(uint256 amount) public {
+    // function repayLong(uint256 amount) internal {
     //     // USDC.transferFrom(msg.sender, address(this), amount);
     //     // IPool(getPool()).repay(address(USDC), amount, 2, address(this));
     // }
 
-    // function removeCollateralLong(uint256 amount) public {
+    // function removeCollateralLong(uint256 amount) internal {
     //     IPool(getPool()).withdraw(address(WETH), amount, msg.sender);
     // }
 
-    // ** USDe USDT side
+    // ** USDe-USDT side
 
-    // function repayShort(uint256 amount) public {
-    //     WETH.transferFrom(msg.sender, address(this), amount);
-    //     IPool(getPool()).repay(address(WETH), amount, 2, address(this));
-    // }
-
-    // function removeCollateralShort(uint256 amount) public {
-    //     // IPool(getPool()).withdraw(address(USDC), amount, msg.sender);
-    // }
-
-    function borrowEM(uint256 amount) public {
+    function borrowEM(uint256 amount) internal {
         IPool(getPool()).borrow(address(USDT), amount, 2, 0, address(this)); // Interest rate mode: 2 = variable
-        USDT.safeTransfer(msg.sender, amount);
     }
 
-    function getCollateralEM() public view returns (uint256) {
+    function getCollateralEM() internal view returns (uint256) {
         (address aTokenAddress, , ) = getAssetAddresses(address(USDe));
         return IERC20(aTokenAddress).balanceOf(address(this));
     }
 
-    function getBorrowedEM() public view returns (uint256) {
+    function getBorrowedEM() internal view returns (uint256) {
         (, , address variableDebtTokenAddress) = getAssetAddresses(address(USDT));
         return IERC20(variableDebtTokenAddress).balanceOf(address(this));
     }
 
-    function addCollateralEM(uint256 amount) public {
-        USDe.transferFrom(msg.sender, address(this), amount);
+    function addCollateralEM(uint256 amount) internal {
         IPool(getPool()).supply(address(USDe), amount, address(this), 0);
     }
 
+    // function repayShort(uint256 amount) internal {
+    //     WETH.transferFrom(msg.sender, address(this), amount);
+    //     IPool(getPool()).repay(address(WETH), amount, 2, address(this));
+    // }
+
+    // function removeCollateralShort(uint256 amount) internal {
+    //     // IPool(getPool()).withdraw(address(USDC), amount, msg.sender);
+    // }
+
     // ** Helpers
 
-    function getAssetAddresses(address underlying) public view returns (address, address, address) {
+    function getAssetAddresses(address underlying) internal view returns (address, address, address) {
         return IPoolDataProvider(provider.getPoolDataProvider()).getReserveTokensAddresses(underlying);
     }
 
-    function getAssetPrice(address underlying) public view returns (uint256) {
+    function getAssetPrice(address underlying) internal view returns (uint256) {
         return IAaveOracle(provider.getPriceOracle()).getAssetPrice(underlying) * 1e10;
     }
 }

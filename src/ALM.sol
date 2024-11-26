@@ -7,24 +7,111 @@ import {ALMBaseLib} from "@src/libraries/ALMBaseLib.sol";
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {BaseStrategyHook} from "@src/core/BaseStrategyHook.sol";
+
+interface ILendingPool {
+    function flashLoan(
+        address receiverAddress,
+        address[] calldata assets,
+        uint256[] calldata amounts,
+        uint256[] calldata modes,
+        address onBehalfOf,
+        bytes calldata params,
+        uint16 referralCode
+    ) external;
+}
 
 /// @title ALM
 /// @author IVikkk
 /// @custom:contact vivan.volovik@gmail.com
 contract ALM is ERC20, BaseStrategyHook {
-    constructor() BaseStrategyHook() ERC20("ALM", "hhALM") {}
+    using SafeERC20 for IERC20;
 
-    function deposit(address to, uint256 amount) external notPaused notShutdown returns (uint256, uint256) {
-        // if (amount == 0) revert ZeroLiquidity();
-        // refreshReserves();
-        // (uint128 deltaL, uint256 amountIn, uint256 shares) = _calcDepositParams(amount);
-        // WETH.transferFrom(msg.sender, address(this), amountIn);
-        // lendingAdapter.addCollateral(WETH.balanceOf(address(this)));
-        // liquidity = liquidity + deltaL;
-        // _mint(to, shares);
-        // emit Deposit(msg.sender, amountIn, shares);
-        // return (amountIn, shares);
+    constructor() BaseStrategyHook() ERC20("ALM", "hhALM") {
+        USDT.forceApprove(ALMBaseLib.SWAP_ROUTER, type(uint256).max);
+        USDe.forceApprove(ALMBaseLib.SWAP_ROUTER, type(uint256).max);
+    }
+
+    ILendingPool constant LENDING_POOL = ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9);
+    uint256 constant leverage = 2 * 1e18;
+
+    function deposit(uint256 wethToSupply) external notPaused notShutdown {
+        WETH.transferFrom(msg.sender, address(this), wethToSupply);
+        // ** Add WETH collateral
+        addCollateralWM(wethToSupply);
+
+        // ** Borrow USDT
+        uint256 usdtToBorrow = ((wethToSupply * 3400) / 1e12) / 2;
+        borrowWM(usdtToBorrow);
+
+        // ** Swap USDT => USDe
+        ALMBaseLib.swapExactInputEP(address(USDT), address(USDe), USDT.balanceOf(address(this)), address(this));
+
+        // ** Add USDe collateral
+        uint256 balanceBefore = USDe.balanceOf(address(this));
+        addCollateralEM(balanceBefore);
+
+        // ** Borrow USDT
+        uint256 usdtToBorrow2 = balanceBefore / 1e12 / 2;
+        borrowEM(usdtToBorrow2);
+    }
+
+    function deposit2(uint256 wethToSupply) external notPaused notShutdown {
+        WETH.transferFrom(msg.sender, address(this), wethToSupply);
+        // ** Add WETH collateral
+        addCollateralWM(wethToSupply);
+
+        // ** Borrow USDT
+        uint256 usdtToBorrow = (((ethUsdtPrice() * wethToSupply) / 1e30) * 4) / 5;
+        borrowWM(usdtToBorrow);
+
+        // ** SWAP USDT => USDe
+        ALMBaseLib.swapExactInputEP(address(USDT), address(USDe), usdtToBorrow, address(this));
+        uint256 sUSDeAmount = USDe.balanceOf(address(this));
+
+        // ** FL USDe
+        console.log(sUSDeAmount);
+        uint256 usdtToFlashLoan = (sUSDeAmount * (leverage - 1e18)) / sUSDeUsdtPrice() / 1e12;
+        console.log(usdtToFlashLoan);
+        address[] memory assets = new address[](1);
+        uint256[] memory amounts = new uint256[](1);
+        uint256[] memory modes = new uint256[](1);
+        (assets[0], amounts[0], modes[0]) = (address(USDT), usdtToFlashLoan, 0);
+        LENDING_POOL.flashLoan(address(this), assets, amounts, modes, address(this), "", 0);
+    }
+
+    function executeOperation(
+        address[] calldata,
+        uint256[] calldata amounts,
+        uint256[] calldata premiums,
+        address,
+        bytes calldata
+    ) external returns (bool) {
+        require(msg.sender == address(LENDING_POOL), "M0");
+
+        // ** SWAP USDT => USDe
+        ALMBaseLib.swapExactInputEP(address(USDT), address(USDe), amounts[0], address(this));
+
+        // ** Add USDe collateral
+        addCollateralEM(USDe.balanceOf(address(this)));
+
+        // ** Borrow USDT to repay flashloan
+        // console.log(amounts[0] + premiums[0]);
+        // uint256 usdtToBorrow = amounts[0] + premiums[0];
+        // borrowEM(usdtToBorrow);
+        // USDT.transferFrom(0x989a1F227e65f09EC16Ff0380EcBcbF3760872f2, address(this), amounts[0] + premiums[0]);
+        return true;
+    }
+
+    function sUSDeUsdtPrice() public view returns (uint256) {
+        return (getAssetPrice(address(USDe)) * 1e18) / getAssetPrice(address(USDT));
+    }
+
+    // TVL = WETHcollaterl + (sUSDeUsdtPrice * USDe - debtUSDT) / ethUsdtPrice
+
+    function ethUsdtPrice() public view returns (uint256) {
+        return (getAssetPrice(address(WETH)) * 1e18) / getAssetPrice(address(USDT));
     }
 
     // ---- Math functions
