@@ -31,33 +31,13 @@ contract ALM is ERC20, BaseStrategyHook {
     constructor() BaseStrategyHook() ERC20("ALM", "hhALM") {
         USDT.forceApprove(ALMBaseLib.SWAP_ROUTER, type(uint256).max);
         USDe.forceApprove(ALMBaseLib.SWAP_ROUTER, type(uint256).max);
+        USDT.forceApprove(address(LENDING_POOL), type(uint256).max);
     }
 
     ILendingPool constant LENDING_POOL = ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9);
     uint256 constant leverage = 2 * 1e18;
 
     function deposit(uint256 wethToSupply) external notPaused notShutdown {
-        WETH.transferFrom(msg.sender, address(this), wethToSupply);
-        // ** Add WETH collateral
-        addCollateralWM(wethToSupply);
-
-        // ** Borrow USDT
-        uint256 usdtToBorrow = ((wethToSupply * 3400) / 1e12) / 2;
-        borrowWM(usdtToBorrow);
-
-        // ** Swap USDT => USDe
-        ALMBaseLib.swapExactInputEP(address(USDT), address(USDe), USDT.balanceOf(address(this)), address(this));
-
-        // ** Add USDe collateral
-        uint256 balanceBefore = USDe.balanceOf(address(this));
-        addCollateralEM(balanceBefore);
-
-        // ** Borrow USDT
-        uint256 usdtToBorrow2 = balanceBefore / 1e12 / 2;
-        borrowEM(usdtToBorrow2);
-    }
-
-    function deposit2(uint256 wethToSupply) external notPaused notShutdown {
         WETH.transferFrom(msg.sender, address(this), wethToSupply);
         // ** Add WETH collateral
         addCollateralWM(wethToSupply);
@@ -90,17 +70,21 @@ contract ALM is ERC20, BaseStrategyHook {
     ) external returns (bool) {
         require(msg.sender == address(LENDING_POOL), "M0");
 
+        console.log("!");
         // ** SWAP USDT => USDe
         ALMBaseLib.swapExactInputEP(address(USDT), address(USDe), amounts[0], address(this));
 
         // ** Add USDe collateral
+        console.log("!");
         addCollateralEM(USDe.balanceOf(address(this)));
 
         // ** Borrow USDT to repay flashloan
-        // console.log(amounts[0] + premiums[0]);
-        // uint256 usdtToBorrow = amounts[0] + premiums[0];
-        // borrowEM(usdtToBorrow);
-        // USDT.transferFrom(0x989a1F227e65f09EC16Ff0380EcBcbF3760872f2, address(this), amounts[0] + premiums[0]);
+        console.log("!");
+        console.log(amounts[0] + premiums[0]);
+
+        uint256 usdtToBorrow = amounts[0] + premiums[0];
+        borrowEM(usdtToBorrow);
+        console.log("!");
         return true;
     }
 
