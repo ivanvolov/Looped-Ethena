@@ -36,11 +36,6 @@ contract AaveLendingAdapter {
 
     // ** WETH-USDT side
 
-    function getBorrowedWM() public view returns (uint256) {
-        (, , address variableDebtTokenAddress) = getAssetAddresses(address(USDT));
-        return IERC20(variableDebtTokenAddress).balanceOf(address(this));
-    }
-
     function getCollateralWM() public view returns (uint256) {
         (address aTokenAddress, , ) = getAssetAddresses(address(WETH));
         return IERC20(aTokenAddress).balanceOf(address(this));
@@ -74,7 +69,7 @@ contract AaveLendingAdapter {
         return IERC20(aTokenAddress).balanceOf(address(this));
     }
 
-    function getBorrowedEM() public view returns (uint256) {
+    function getBorrowedUSDT() public view returns (uint256) {
         (, , address variableDebtTokenAddress) = getAssetAddresses(address(USDT));
         return IERC20(variableDebtTokenAddress).balanceOf(address(this));
     }
@@ -104,12 +99,12 @@ contract AaveLendingAdapter {
 
     // ** For testing remove in production
 
-    function getCollateralEM(address user, address asset) external view returns (uint256) {
+    function getCollateral(address user, address asset) external view returns (uint256) {
         (address aTokenAddress, , ) = getAssetAddresses(asset);
         return IERC20(aTokenAddress).balanceOf(user);
     }
 
-    function getBorrowedEM(address user, address asset) external view returns (uint256) {
+    function getBorrowed(address user, address asset) external view returns (uint256) {
         (, , address variableDebtTokenAddress) = getAssetAddresses(asset);
         return IERC20(variableDebtTokenAddress).balanceOf(user);
     }

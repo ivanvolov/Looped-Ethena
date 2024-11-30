@@ -44,15 +44,17 @@ contract ALM is ERC20, BaseStrategyHook {
     }
 
     ILendingPool constant LENDING_POOL = ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9);
-    uint256 constant leverage = 4 * 1e18;
+    uint256 constant leverage = 3 * 1e18;
 
     function deposit(uint256 wethToSupply) external notPaused notShutdown {
         WETH.transferFrom(msg.sender, address(this), wethToSupply);
+        uint256 firstTVL = TVL();
+
         // ** Add WETH collateral
         addCollateralWM(wethToSupply);
 
         // ** Borrow USDT
-        uint256 usdtToBorrow = (((ethUsdtPrice() * wethToSupply) / 1e30) * 4) / 5;
+        uint256 usdtToBorrow = _WETHtoUSDT((wethToSupply * 4) / 5); // 75% of wethToSupply
         borrowWM(usdtToBorrow);
 
         // ** SWAP USDT => USDe
@@ -65,12 +67,20 @@ contract ALM is ERC20, BaseStrategyHook {
         console.log("sUSDe amount", sUSDeAmount / 1e18);
 
         // ** FL USDT
-        uint256 usdtToFlashLoan = ((sUSDeAmount * (leverage - 1e18)) / sUSDeUsdtPrice()) / 1e12;
+        uint256 usdtToFlashLoan = _sUSDeToUSDT((sUSDeAmount * (leverage - 1e18)) / 1e18);
         address[] memory assets = new address[](1);
         uint256[] memory amounts = new uint256[](1);
         uint256[] memory modes = new uint256[](1);
         (assets[0], amounts[0], modes[0]) = (address(USDT), usdtToFlashLoan, 0);
         LENDING_POOL.flashLoan(address(this), assets, amounts, modes, address(this), "", 0);
+
+        uint256 secondTVL = TVL();
+        if (firstTVL == 0) {
+            _mint(msg.sender, secondTVL);
+        } else {
+            uint256 sharesToMint = (totalSupply() * (secondTVL - firstTVL)) / firstTVL;
+            _mint(msg.sender, sharesToMint);
+        }
     }
 
     function executeOperation(
@@ -99,37 +109,37 @@ contract ALM is ERC20, BaseStrategyHook {
         return true;
     }
 
+    // ** Price Helpers
+
+    function _sUSDeToUSDT(uint256 amount) public view returns (uint256) {
+        return (amount * sUSDeUsdtPrice()) / 1e30;
+    }
+
+    function _WETHtoUSDT(uint256 amount) public view returns (uint256) {
+        return (amount * wethUsdtPrice()) / 1e30;
+    }
+
+    function _USDTtoWETH(int256 amount) public view returns (int256) {
+        return (amount * 1e30) / int256(wethUsdtPrice());
+    }
+
     function sUSDeUsdtPrice() public view returns (uint256) {
         return (getAssetPrice(address(sUSDe)) * 1e18) / getAssetPrice(address(USDT));
     }
 
-    function ethUsdtPrice() public view returns (uint256) {
+    function wethUsdtPrice() public view returns (uint256) {
         return (getAssetPrice(address(WETH)) * 1e18) / getAssetPrice(address(USDT));
     }
 
     // ---- Math functions
 
     function TVL() public view returns (uint256) {
-        uint256 usdtDebt = getBorrowedEM() + getBorrowedWM();
-        console.log("colETH", getCollateralWM());
-        console.log("colUSDe", getCollateralEM());
-        console.log("sUSDeUsdtPrice", sUSDeUsdtPrice());
-        console.log("usdtDebt", usdtDebt);
-        console.log("ethUsdtPrice", ethUsdtPrice());
-        // return getCollateralWM() + (sUSDeUsdtPrice() * getCollateralEM() - usdtDebt) / ethUsdtPrice();
-        // uint256 price = _calcCurrentPrice();
-        // int256 tvl = int256(lendingAdapter.getCollateral()) +
-        //     int256(lendingAdapter.getSupplied() / price) -
-        //     int256(lendingAdapter.getBorrowed() / price);
-        // return uint256(tvl);
-    }
-
-    function sharePrice() public view returns (uint256) {
-        // if (totalSupply() == 0) return 0;
-        // return (TVL() * 1e18) / totalSupply();
-    }
-
-    function _calcCurrentPrice() public view returns (uint256) {
-        // return ALMMathLib.getPriceFromSqrtPriceX96(sqrtPriceCurrent);
+        // console.log("1", _sUSDeToUSDT(getCollateralEM()));
+        // console.log("2", getBorrowedUSDT());
+        return
+            uint256(
+                int256(getCollateralWM()) +
+                    _USDTtoWETH(int256(_sUSDeToUSDT(getCollateralEM())) - int256(getBorrowedUSDT()))
+            );
     }
 }

@@ -32,12 +32,12 @@ contract ALMTest is ALMTestBase {
             // ** We need smb to withdraw from aave pool cause market cap is reached.
             address whale = 0x4F0A01BAdAa24F762CeE620883f16C4460c06Be0;
             vm.startPrank(whale);
-            uint256 before = alm.getCollateralEM(whale, address(sUSDe));
+            uint256 before = alm.getCollateral(whale, address(sUSDe));
 
             // ** repay
             address asset1 = 0xdC035D45d973E3EC169d2276DDab16f1e407384F;
             IERC20(asset1).approve(address(alm._getPool()), type(uint256).max);
-            uint256 a_t_close = alm.getBorrowedEM(whale, asset1);
+            uint256 a_t_close = alm.getBorrowed(whale, asset1);
             deal(asset1, whale, a_t_close);
             alm._getPool().repay(asset1, a_t_close, 2, whale);
 
@@ -48,12 +48,22 @@ contract ALMTest is ALMTestBase {
     }
 
     function test_deposit() public {
+        assertApproxEqAbs(alm.TVL(), 0, 1000, "TVL not equal");
+        assertApproxEqAbs(alm.getCollateralWM(), 0, 1000, "Collateral not equal");
+        assertApproxEqAbs(alm.getCollateralEM(), 0, 1000, "Collateral not equal");
+        assertApproxEqAbs(alm.getBorrowedUSDT(), 0, 1000, "Borrowed not equal");
+        assertApproxEqAbs(alm.balanceOf(alice.addr), 0, 1000, "Shares not equal");
+
         vm.startPrank(alice.addr);
         uint256 wethToSupply = 10 * 1e18;
         deal(address(WETH), address(alice.addr), wethToSupply);
         alm.deposit(wethToSupply);
         vm.stopPrank();
 
-        alm.TVL();
+        assertApproxEqAbs(alm.TVL(), 9983559144938829211, 10, "TVL not equal");
+        assertApproxEqAbs(alm.getCollateralWM(), 10 ether, 1000, "Collateral not equal");
+        assertApproxEqAbs(alm.getCollateralEM(), 77824561794585607021950, 1000, "Collateral not equal");
+        assertApproxEqAbs(alm.getBorrowedUSDT(), 87838599185, 1000, "Borrowed not equal");
+        assertApproxEqAbs(alm.balanceOf(alice.addr), 9983559144938829211, 10, "Shares not equal");
     }
 }
