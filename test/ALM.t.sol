@@ -53,5 +53,7 @@ contract ALMTest is ALMTestBase {
         deal(address(WETH), address(alice.addr), wethToSupply);
         alm.deposit(wethToSupply);
         vm.stopPrank();
+
+        alm.TVL();
     }
 }

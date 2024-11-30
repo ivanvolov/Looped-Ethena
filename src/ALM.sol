@@ -110,6 +110,13 @@ contract ALM is ERC20, BaseStrategyHook {
     // ---- Math functions
 
     function TVL() public view returns (uint256) {
+        uint256 usdtDebt = getBorrowedEM() + getBorrowedWM();
+        console.log("colETH", getCollateralWM());
+        console.log("colUSDe", getCollateralEM());
+        console.log("sUSDeUsdtPrice", sUSDeUsdtPrice());
+        console.log("usdtDebt", usdtDebt);
+        console.log("ethUsdtPrice", ethUsdtPrice());
+        // return getCollateralWM() + (sUSDeUsdtPrice() * getCollateralEM() - usdtDebt) / ethUsdtPrice();
         // uint256 price = _calcCurrentPrice();
         // int256 tvl = int256(lendingAdapter.getCollateral()) +
         //     int256(lendingAdapter.getSupplied() / price) -
