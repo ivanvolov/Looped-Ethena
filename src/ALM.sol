@@ -22,6 +22,10 @@ interface ILendingPool {
     ) external;
 }
 
+interface ISUSDe is IERC20 {
+    function deposit(uint256 assets, address receiver) external;
+}
+
 /// @title ALM
 /// @author IVikkk
 /// @custom:contact vivan.volovik@gmail.com
@@ -31,11 +35,16 @@ contract ALM is ERC20, BaseStrategyHook {
     constructor() BaseStrategyHook() ERC20("ALM", "hhALM") {
         USDT.forceApprove(ALMBaseLib.SWAP_ROUTER, type(uint256).max);
         USDe.forceApprove(ALMBaseLib.SWAP_ROUTER, type(uint256).max);
+        sUSDe.forceApprove(ALMBaseLib.SWAP_ROUTER, type(uint256).max);
+
         USDT.forceApprove(address(LENDING_POOL), type(uint256).max);
+        sUSDe.forceApprove(address(LENDING_POOL), type(uint256).max);
+
+        USDe.approve(address(sUSDe), type(uint256).max);
     }
 
     ILendingPool constant LENDING_POOL = ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9);
-    uint256 constant leverage = 2 * 1e18;
+    uint256 constant leverage = 4 * 1e18;
 
     function deposit(uint256 wethToSupply) external notPaused notShutdown {
         WETH.transferFrom(msg.sender, address(this), wethToSupply);
@@ -48,12 +57,15 @@ contract ALM is ERC20, BaseStrategyHook {
 
         // ** SWAP USDT => USDe
         ALMBaseLib.swapExactInputEP(address(USDT), address(USDe), usdtToBorrow, address(this));
-        uint256 sUSDeAmount = USDe.balanceOf(address(this));
+        uint256 USDeAmount = USDe.balanceOf(address(this));
 
-        // ** FL USDe
-        console.log(sUSDeAmount);
-        uint256 usdtToFlashLoan = (sUSDeAmount * (leverage - 1e18)) / sUSDeUsdtPrice() / 1e12;
-        console.log(usdtToFlashLoan);
+        // ** USDe => sUSDe
+        ISUSDe(address(sUSDe)).deposit(USDeAmount, address(this));
+        uint256 sUSDeAmount = sUSDe.balanceOf(address(this));
+        console.log("sUSDe amount", sUSDeAmount / 1e18);
+
+        // ** FL USDT
+        uint256 usdtToFlashLoan = ((sUSDeAmount * (leverage - 1e18)) / sUSDeUsdtPrice()) / 1e12;
         address[] memory assets = new address[](1);
         uint256[] memory amounts = new uint256[](1);
         uint256[] memory modes = new uint256[](1);
@@ -70,29 +82,26 @@ contract ALM is ERC20, BaseStrategyHook {
     ) external returns (bool) {
         require(msg.sender == address(LENDING_POOL), "M0");
 
-        console.log("!");
         // ** SWAP USDT => USDe
         ALMBaseLib.swapExactInputEP(address(USDT), address(USDe), amounts[0], address(this));
 
-        // ** Add USDe collateral
-        console.log("!");
-        addCollateralEM(USDe.balanceOf(address(this)));
+        // ** USDe => sUSDe
+        ISUSDe(address(sUSDe)).deposit(USDe.balanceOf(address(this)), address(this));
+
+        // ** Add sUSDe collateral
+        console.log("sUSDe added collateral", sUSDe.balanceOf(address(this)) / 1e18);
+        addCollateralEM(sUSDe.balanceOf(address(this)));
 
         // ** Borrow USDT to repay flashloan
-        console.log("!");
-        console.log(amounts[0] + premiums[0]);
-
         uint256 usdtToBorrow = amounts[0] + premiums[0];
+        console.log("Borrowed", usdtToBorrow / 1e6);
         borrowEM(usdtToBorrow);
-        console.log("!");
         return true;
     }
 
     function sUSDeUsdtPrice() public view returns (uint256) {
-        return (getAssetPrice(address(USDe)) * 1e18) / getAssetPrice(address(USDT));
+        return (getAssetPrice(address(sUSDe)) * 1e18) / getAssetPrice(address(USDT));
     }
-
-    // TVL = WETHcollaterl + (sUSDeUsdtPrice * USDe - debtUSDT) / ethUsdtPrice
 
     function ethUsdtPrice() public view returns (uint256) {
         return (getAssetPrice(address(WETH)) * 1e18) / getAssetPrice(address(USDT));

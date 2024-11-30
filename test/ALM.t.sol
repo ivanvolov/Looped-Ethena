@@ -20,25 +20,36 @@ contract ALMTest is ALMTestBase {
     function setUp() public {
         uint256 mainnetFork = vm.createFork(MAINNET_RPC_URL);
         vm.selectFork(mainnetFork);
-        vm.rollFork(21_265_596);
+        vm.rollFork(21300295);
 
         create_accounts_and_tokens();
         init_alm();
 
         vm.prank(alice.addr);
         WETH.approve(address(alm), type(uint256).max);
+
+        {
+            // ** We need smb to withdraw from aave pool cause market cap is reached.
+            address whale = 0x4F0A01BAdAa24F762CeE620883f16C4460c06Be0;
+            vm.startPrank(whale);
+            uint256 before = alm.getCollateralEM(whale, address(sUSDe));
+
+            // ** repay
+            address asset1 = 0xdC035D45d973E3EC169d2276DDab16f1e407384F;
+            IERC20(asset1).approve(address(alm._getPool()), type(uint256).max);
+            uint256 a_t_close = alm.getBorrowedEM(whale, asset1);
+            deal(asset1, whale, a_t_close);
+            alm._getPool().repay(asset1, a_t_close, 2, whale);
+
+            // ** withdraw
+            alm._getPool().withdraw(address(sUSDe), before / 2, whale);
+            vm.stopPrank();
+        }
     }
 
-    uint256 amountToDep = 100 ether;
-
     function test_deposit() public {
-        // deal(address(USDT), zero.addr, 268457108531);
-        // vm.prank(zero.addr);
-        // USDT.safeTransfer(address(alm), 268457108531);
-        // vm.stopPrank();
-
         vm.startPrank(alice.addr);
-        uint256 wethToSupply = 100 * 1e18;
+        uint256 wethToSupply = 10 * 1e18;
         deal(address(WETH), address(alice.addr), wethToSupply);
         alm.deposit(wethToSupply);
         vm.stopPrank();
