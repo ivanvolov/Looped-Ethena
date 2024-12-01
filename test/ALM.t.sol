@@ -29,7 +29,7 @@ contract ALMTest is ALMTestBase {
         WETH.approve(address(alm), type(uint256).max);
 
         vm.prank(bob.addr);
-        WETH.approve(address(bob.addr), type(uint256).max);
+        WETH.approve(address(alm), type(uint256).max);
 
         {
             // ** We need smb to withdraw from aave pool cause market cap is reached.
@@ -80,11 +80,11 @@ contract ALMTest is ALMTestBase {
         alm.deposit(wethToSupply);
         vm.stopPrank();
 
-        assertApproxEqAbs(alm.TVL(), 9983559144938829211, 10, "TVL not equal");
-        // assertApproxEqAbs(alm.getCollateralWM(), 10 ether, 1000, "Collateral not equal");
-        // assertApproxEqAbs(alm.getCollateralEM(), 77824561794585607021950, 1000, "Collateral not equal");
-        // assertApproxEqAbs(alm.getBorrowedUSDT(), 87838599185, 1000, "Borrowed not equal");
-        // assertApproxEqAbs(alm.balanceOf(bob.addr), 9983559144938829211, 10, "Shares not equal");
+        assertApproxEqAbs(alm.TVL(), 19966661783093358137, 10, "TVL not equal");
+        assertApproxEqAbs(alm.getCollateralWM(), 20 ether, 1000, "Collateral not equal");
+        assertApproxEqAbs(alm.getCollateralEM(), 155646654448606681912570, 1000, "Collateral not equal");
+        assertApproxEqAbs(alm.getBorrowedUSDT(), 175676083297, 1000, "Borrowed not equal");
+        assertApproxEqAbs(alm.balanceOf(bob.addr), 9983102638154528926, 10, "Shares not equal");
     }
 
     function test_withdraw() public {
