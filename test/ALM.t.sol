@@ -28,6 +28,9 @@ contract ALMTest is ALMTestBase {
         vm.prank(alice.addr);
         WETH.approve(address(alm), type(uint256).max);
 
+        vm.prank(bob.addr);
+        WETH.approve(address(bob.addr), type(uint256).max);
+
         {
             // ** We need smb to withdraw from aave pool cause market cap is reached.
             address whale = 0x4F0A01BAdAa24F762CeE620883f16C4460c06Be0;
@@ -48,6 +51,7 @@ contract ALMTest is ALMTestBase {
     }
 
     function test_deposit() public {
+        console.log("price:", alm.wethUsdtPrice() / 1e18);
         assertApproxEqAbs(alm.TVL(), 0, 1000, "TVL not equal");
         assertApproxEqAbs(alm.getCollateralWM(), 0, 1000, "Collateral not equal");
         assertApproxEqAbs(alm.getCollateralEM(), 0, 1000, "Collateral not equal");
@@ -65,5 +69,29 @@ contract ALMTest is ALMTestBase {
         assertApproxEqAbs(alm.getCollateralEM(), 77824561794585607021950, 1000, "Collateral not equal");
         assertApproxEqAbs(alm.getBorrowedUSDT(), 87838599185, 1000, "Borrowed not equal");
         assertApproxEqAbs(alm.balanceOf(alice.addr), 9983559144938829211, 10, "Shares not equal");
+    }
+
+    function test_two_deposit() public {
+        test_deposit();
+
+        vm.startPrank(bob.addr);
+        uint256 wethToSupply = 10 * 1e18;
+        deal(address(WETH), address(bob.addr), wethToSupply);
+        alm.deposit(wethToSupply);
+        vm.stopPrank();
+
+        assertApproxEqAbs(alm.TVL(), 9983559144938829211, 10, "TVL not equal");
+        // assertApproxEqAbs(alm.getCollateralWM(), 10 ether, 1000, "Collateral not equal");
+        // assertApproxEqAbs(alm.getCollateralEM(), 77824561794585607021950, 1000, "Collateral not equal");
+        // assertApproxEqAbs(alm.getBorrowedUSDT(), 87838599185, 1000, "Borrowed not equal");
+        // assertApproxEqAbs(alm.balanceOf(bob.addr), 9983559144938829211, 10, "Shares not equal");
+    }
+
+    function test_withdraw() public {
+        test_deposit();
+
+        vm.startPrank(alice.addr);
+        alm.withdraw(alm.balanceOf(alice.addr) / 2);
+        vm.stopPrank();
     }
 }

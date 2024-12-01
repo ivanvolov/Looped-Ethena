@@ -34,11 +34,14 @@ contract ALM is ERC20, BaseStrategyHook {
 
     constructor() BaseStrategyHook() ERC20("ALM", "hhALM") {
         USDT.forceApprove(ALMBaseLib.SWAP_ROUTER, type(uint256).max);
+        WETH.forceApprove(ALMBaseLib.SWAP_ROUTER, type(uint256).max);
         USDe.forceApprove(ALMBaseLib.SWAP_ROUTER, type(uint256).max);
         sUSDe.forceApprove(ALMBaseLib.SWAP_ROUTER, type(uint256).max);
 
         USDT.forceApprove(address(LENDING_POOL), type(uint256).max);
+        USDe.forceApprove(address(LENDING_POOL), type(uint256).max);
         sUSDe.forceApprove(address(LENDING_POOL), type(uint256).max);
+        WETH.forceApprove(address(LENDING_POOL), type(uint256).max);
 
         USDe.approve(address(sUSDe), type(uint256).max);
     }
@@ -83,30 +86,60 @@ contract ALM is ERC20, BaseStrategyHook {
         }
     }
 
+    function withdraw(uint256 shares) external notShutdown {
+        uint256 ratio = (shares * 1e18) / totalSupply();
+        uint256 usdtToFlashLoan = (getBorrowedUSDT() * ratio) / 1e18;
+        _burn(msg.sender, shares);
+
+        address[] memory assets = new address[](1);
+        uint256[] memory amounts = new uint256[](1);
+        uint256[] memory modes = new uint256[](1);
+        (assets[0], amounts[0], modes[0]) = (address(USDT), usdtToFlashLoan, 0);
+        LENDING_POOL.flashLoan(address(this), assets, amounts, modes, address(this), abi.encode(ratio), 0);
+    }
+
     function executeOperation(
         address[] calldata,
         uint256[] calldata amounts,
         uint256[] calldata premiums,
         address,
-        bytes calldata
+        bytes calldata data
     ) external returns (bool) {
         require(msg.sender == address(LENDING_POOL), "M0");
 
-        // ** SWAP USDT => USDe
-        ALMBaseLib.swapExactInputEP(address(USDT), address(USDe), amounts[0], address(this));
+        if (data.length == 0) {
+            // ** SWAP USDT => USDe
+            ALMBaseLib.swapExactInputEP(address(USDT), address(USDe), amounts[0], address(this));
 
-        // ** USDe => sUSDe
-        ISUSDe(address(sUSDe)).deposit(USDe.balanceOf(address(this)), address(this));
+            // ** USDe => sUSDe
+            ISUSDe(address(sUSDe)).deposit(USDe.balanceOf(address(this)), address(this));
 
-        // ** Add sUSDe collateral
-        console.log("sUSDe added collateral", sUSDe.balanceOf(address(this)) / 1e18);
-        addCollateralEM(sUSDe.balanceOf(address(this)));
+            // ** Add sUSDe collateral
+            console.log("sUSDe added collateral", sUSDe.balanceOf(address(this)) / 1e18);
+            addCollateralEM(sUSDe.balanceOf(address(this)));
 
-        // ** Borrow USDT to repay flashloan
-        uint256 usdtToBorrow = amounts[0] + premiums[0];
-        console.log("Borrowed", usdtToBorrow / 1e6);
-        borrowEM(usdtToBorrow);
-        return true;
+            // ** Borrow USDT to repay flashloan
+            uint256 usdtToBorrow = amounts[0] + premiums[0];
+            console.log("Borrowed", usdtToBorrow / 1e6);
+            borrowEM(usdtToBorrow);
+            return true;
+        } else {
+            // ** repay USDT
+            repayUSDT(amounts[0]);
+
+            // ** remove collateral WETH
+            uint256 ratio = abi.decode(data, (uint256));
+            removeCollateralWM((getCollateralWM() * ratio) / 1e18);
+
+            // ** remove collateral sUSDe
+            removeCollateralEM((getCollateralEM() * ratio) / 1e18);
+
+            uint256 usdtToRepay = amounts[0] + premiums[0];
+            console.log("usdtToRepay", usdtToRepay / 1e6);
+            ALMBaseLib.swapExactOutputWP(address(WETH), address(USDT), usdtToRepay / 10);
+
+            // ISUSDe(address(sUSDe)).deposit(USDe.balanceOf(address(this)), address(this));
+        }
     }
 
     // ** Price Helpers

@@ -4,7 +4,6 @@ pragma solidity ^0.8.25;
 import "forge-std/console.sol";
 
 import {ALMBaseLib} from "@src/libraries/ALMBaseLib.sol";
-import {IWETH} from "@forks/IWETH.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IALM} from "@src/interfaces/IALM.sol";
 import {AaveLendingAdapter} from "@src/core/AaveLendingAdapter.sol";

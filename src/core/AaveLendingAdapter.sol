@@ -34,6 +34,15 @@ contract AaveLendingAdapter {
         return provider.getPool();
     }
 
+    function getBorrowedUSDT() public view returns (uint256) {
+        (, , address variableDebtTokenAddress) = getAssetAddresses(address(USDT));
+        return IERC20(variableDebtTokenAddress).balanceOf(address(this));
+    }
+
+    function repayUSDT(uint256 amount) internal {
+        IPool(getPool()).repay(address(USDT), amount, 2, address(this));
+    }
+
     // ** WETH-USDT side
 
     function getCollateralWM() public view returns (uint256) {
@@ -49,14 +58,9 @@ contract AaveLendingAdapter {
         IPool(getPool()).supply(address(WETH), amount, address(this), 0);
     }
 
-    // function repayLong(uint256 amount) internal {
-    //     // USDC.transferFrom(msg.sender, address(this), amount);
-    //     // IPool(getPool()).repay(address(USDC), amount, 2, address(this));
-    // }
-
-    // function removeCollateralLong(uint256 amount) internal {
-    //     IPool(getPool()).withdraw(address(WETH), amount, msg.sender);
-    // }
+    function removeCollateralWM(uint256 amount) internal {
+        IPool(getPool()).withdraw(address(WETH), amount, msg.sender);
+    }
 
     // ** sUSDe-USDT side
 
@@ -69,23 +73,13 @@ contract AaveLendingAdapter {
         return IERC20(aTokenAddress).balanceOf(address(this));
     }
 
-    function getBorrowedUSDT() public view returns (uint256) {
-        (, , address variableDebtTokenAddress) = getAssetAddresses(address(USDT));
-        return IERC20(variableDebtTokenAddress).balanceOf(address(this));
-    }
-
     function addCollateralEM(uint256 amount) internal {
         IPool(getPool()).supply(address(sUSDe), amount, address(this), 0);
     }
 
-    // function repayShort(uint256 amount) internal {
-    //     WETH.transferFrom(msg.sender, address(this), amount);
-    //     IPool(getPool()).repay(address(WETH), amount, 2, address(this));
-    // }
-
-    // function removeCollateralShort(uint256 amount) internal {
-    //     // IPool(getPool()).withdraw(address(USDC), amount, msg.sender);
-    // }
+    function removeCollateralEM(uint256 amount) internal {
+        IPool(getPool()).withdraw(address(sUSDe), amount, msg.sender);
+    }
 
     // ** Helpers
 

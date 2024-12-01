@@ -25,6 +25,7 @@ abstract contract ALMTestBase is Test {
 
     TestAccount deployer;
     TestAccount alice;
+    TestAccount bob;
     TestAccount zero;
 
     function init_alm() internal {
@@ -45,27 +46,7 @@ abstract contract ALMTestBase is Test {
 
         deployer = TestAccountLib.createTestAccount("deployer");
         alice = TestAccountLib.createTestAccount("alice");
+        bob = TestAccountLib.createTestAccount("bob");
         zero = TestAccountLib.createTestAccount("zero");
-    }
-
-    // -- Custom assertions -- //
-
-    function assertEqBalanceStateZero(address owner) public view {
-        assertEqBalanceState(owner, 0, 0, 0);
-    }
-
-    function assertEqBalanceState(address owner, uint256 _balanceWETH, uint256 _balanceUSDT) public view {
-        assertEqBalanceState(owner, _balanceWETH, _balanceUSDT, 0);
-    }
-
-    function assertEqBalanceState(
-        address owner,
-        uint256 _balanceWETH,
-        uint256 _balanceUSDT,
-        uint256 _balanceUSDe
-    ) public view {
-        assertApproxEqAbs(WETH.balanceOf(owner), _balanceWETH, 1000, "Balance WETH not equal");
-        assertApproxEqAbs(USDT.balanceOf(owner), _balanceUSDT, 10, "Balance USDT not equal");
-        assertApproxEqAbs(USDe.balanceOf(owner), _balanceUSDe, 1000, "Balance USDe not equal");
     }
 }
