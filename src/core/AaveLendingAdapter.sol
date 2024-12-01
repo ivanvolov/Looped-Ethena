@@ -59,7 +59,7 @@ contract AaveLendingAdapter {
     }
 
     function removeCollateralWM(uint256 amount) internal {
-        IPool(getPool()).withdraw(address(WETH), amount, msg.sender);
+        IPool(getPool()).withdraw(address(WETH), amount, address(this));
     }
 
     // ** sUSDe-USDT side
@@ -78,7 +78,7 @@ contract AaveLendingAdapter {
     }
 
     function removeCollateralEM(uint256 amount) internal {
-        IPool(getPool()).withdraw(address(sUSDe), amount, msg.sender);
+        IPool(getPool()).withdraw(address(sUSDe), amount, address(this));
     }
 
     // ** Helpers

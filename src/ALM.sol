@@ -24,6 +24,8 @@ interface ILendingPool {
 
 interface ISUSDe is IERC20 {
     function deposit(uint256 assets, address receiver) external;
+
+    function withdraw(uint256 assets, address receiver, address _owner) external returns (uint256);
 }
 
 /// @title ALM
@@ -96,6 +98,8 @@ contract ALM is ERC20, BaseStrategyHook {
         uint256[] memory modes = new uint256[](1);
         (assets[0], amounts[0], modes[0]) = (address(USDT), usdtToFlashLoan, 0);
         LENDING_POOL.flashLoan(address(this), assets, amounts, modes, address(this), abi.encode(ratio), 0);
+
+        WETH.transfer(msg.sender, WETH.balanceOf(address(this)));
     }
 
     function executeOperation(
@@ -124,21 +128,27 @@ contract ALM is ERC20, BaseStrategyHook {
             borrowEM(usdtToBorrow);
             return true;
         } else {
+            uint256 ratio = abi.decode(data, (uint256));
             // ** repay USDT
             repayUSDT(amounts[0]);
 
             // ** remove collateral WETH
-            uint256 ratio = abi.decode(data, (uint256));
             removeCollateralWM((getCollateralWM() * ratio) / 1e18);
 
             // ** remove collateral sUSDe
             removeCollateralEM((getCollateralEM() * ratio) / 1e18);
 
-            uint256 usdtToRepay = amounts[0] + premiums[0];
-            console.log("usdtToRepay", usdtToRepay / 1e6);
+            // ** sUSDe => USDe
+            ISUSDe(address(sUSDe)).withdraw(sUSDe.balanceOf(address(this)), address(this), address(this));
+
+            // ** SWAP USDe => USDT
+            ALMBaseLib.swapExactInputEP(address(USDe), address(USDT), sUSDe.balanceOf(address(this)), address(this));
+
+            // ** WETH => USDT
+            uint256 usdtToRepay = amounts[0] + premiums[0] - USDT.balanceOf(address(this));
             ALMBaseLib.swapExactOutputWP(address(WETH), address(USDT), usdtToRepay / 10);
 
-            // ISUSDe(address(sUSDe)).deposit(USDe.balanceOf(address(this)), address(this));
+            return true;
         }
     }
 

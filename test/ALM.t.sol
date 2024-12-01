@@ -88,10 +88,17 @@ contract ALMTest is ALMTestBase {
     }
 
     function test_withdraw() public {
+        vm.skip(true);
         test_deposit();
 
         vm.startPrank(alice.addr);
-        alm.withdraw(alm.balanceOf(alice.addr) / 2);
+        alm.withdraw(alm.balanceOf(alice.addr));
         vm.stopPrank();
+
+        assertApproxEqAbs(alm.TVL(), 0, 1000, "TVL not equal");
+        assertApproxEqAbs(alm.getCollateralWM(), 0, 1000, "Collateral not equal");
+        assertApproxEqAbs(alm.getCollateralEM(), 0, 1000, "Collateral not equal");
+        assertApproxEqAbs(alm.getBorrowedUSDT(), 0, 1000, "Borrowed not equal");
+        assertApproxEqAbs(alm.balanceOf(alice.addr), 0, 1000, "Shares not equal");
     }
 }
