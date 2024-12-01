@@ -1,4 +1,4 @@
-# Aavena vault
+# Aavena
 
 ![image](https://github.com/user-attachments/assets/bd0d0294-300b-45a3-8f79-3e03bc95afca)
 
@@ -17,7 +17,7 @@ This streamlined process boosts stablecoin liquidity on Aave and offers users a 
 ## 🛠️ Technical Details
 
 ### Automated Rebalancing
-The Aavena Loop vault automatically rebalances its positions once per week. This process reinvests accrued yield back into ETH, maximizing ETH stacking efficiency and compounding returns over time.
+The Aavena vault automatically rebalances its positions once per week. This process reinvests accrued yield back into ETH, maximizing ETH stacking efficiency and compounding returns over time.
 
 ### Implemented Functions
 
