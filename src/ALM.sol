@@ -142,11 +142,11 @@ contract ALM is ERC20, BaseStrategyHook {
             ISUSDe(address(sUSDe)).withdraw(sUSDe.balanceOf(address(this)), address(this), address(this));
 
             // ** SWAP USDe => USDT
-            ALMBaseLib.swapExactInputEP(address(USDe), address(USDT), sUSDe.balanceOf(address(this)), address(this));
+            ALMBaseLib.swapExactInputEP(address(USDe), address(USDT), USDe.balanceOf(address(this)), address(this));
 
             // ** WETH => USDT
             uint256 usdtToRepay = amounts[0] + premiums[0] - USDT.balanceOf(address(this));
-            ALMBaseLib.swapExactOutputWP(address(WETH), address(USDT), usdtToRepay / 10);
+            ALMBaseLib.swapExactOutputWP(address(WETH), address(USDT), usdtToRepay);
 
             return true;
         }

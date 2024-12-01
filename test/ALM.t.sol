@@ -12,6 +12,10 @@ import {IALM} from "@src/interfaces/IALM.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+interface ISUSDe is IERC20 {
+    function setCooldownDuration(uint24 duration) external;
+}
+
 contract ALMTest is ALMTestBase {
     using SafeERC20 for IERC20;
 
@@ -30,6 +34,12 @@ contract ALMTest is ALMTestBase {
 
         vm.prank(bob.addr);
         WETH.approve(address(alm), type(uint256).max);
+
+        {
+            // ** We need it caus Uniswap pool is not initialized yet.
+            vm.prank(0x3B0AAf6e6fCd4a7cEEf8c92C32DFeA9E64dC1862);
+            ISUSDe(address(sUSDe)).setCooldownDuration(0);
+        }
 
         {
             // ** We need smb to withdraw from aave pool cause market cap is reached.
@@ -88,13 +98,13 @@ contract ALMTest is ALMTestBase {
     }
 
     function test_withdraw() public {
-        vm.skip(true);
         test_deposit();
 
         vm.startPrank(alice.addr);
         alm.withdraw(alm.balanceOf(alice.addr));
         vm.stopPrank();
 
+        assertApproxEqAbs(WETH.balanceOf(address(alice.addr)), 7255099292429920748, 1000, "WETH not equal");
         assertApproxEqAbs(alm.TVL(), 0, 1000, "TVL not equal");
         assertApproxEqAbs(alm.getCollateralWM(), 0, 1000, "Collateral not equal");
         assertApproxEqAbs(alm.getCollateralEM(), 0, 1000, "Collateral not equal");
