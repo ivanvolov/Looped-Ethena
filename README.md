@@ -1,13 +1,10 @@
 # Aavena vault
 
-## 🚀 Project Overview
-
-Inspiration:
-Inspired by [Seraphim’s tweet](https://x.com/MacroMate8/status/1857308639486427210), Aavena Loop vault simplifies and automates a popular leverage strategy.
-
 ![image](https://github.com/user-attachments/assets/bd0d0294-300b-45a3-8f79-3e03bc95afca)
 
-We structure this as a one-click vault that automates the following flow:
+🚀 Inspired by [Seraphim’s tweet](https://x.com/MacroMate8/status/1857308639486427210), Aavena Loop vault simplifies and automates a popular leverage strategy.
+
+Which we structure this as a one-click vault that automates the following flow:
 
 1. Lend stETH as collateral on Aave.
 2. Borrow USDT stablecoin.
@@ -38,6 +35,21 @@ The `withdraw` function enables users to exit the strategy by:
 - Reclaiming their original stETH collateral.
 
 Both functions are designed to provide seamless user interaction while maintaining capital efficiency and safety.
+
+## 🌟 User Benefits
+
+- **Automation:** No manual looping or position management required.  
+- **Maximized Yields:** Weekly rebalancing reinvests returns for compounding gains.  
+- **Gas Efficiency:** Flash loan operations minimize transaction costs.  
+- **Seamless Experience:** Simple deposit and withdrawal process.  
+
+## 🔮 Future Plans
+
+1. Complete the weekly rebalance procedure to reinvest yield into ETH.  
+2. Integrate Morpho and Euler to increase vault capacity.  
+3. Deploy the vault to mainnet.  
+4. Build a similar vault for cbBTC to DCA into BTC using Ethena yield.
+
 
 ## How to run locally
 
