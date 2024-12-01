@@ -6,7 +6,7 @@
 
 Which we structure this as a one-click vault that automates the following flow:
 
-1. Lend stETH as collateral on Aave.
+1. Lend stETH as collateral on Aave (50% LTV).
 2. Borrow USDT stablecoin.
 3. Swap USDT into sUSDe.
 4. Lend sUSDe on Aave.
@@ -49,7 +49,6 @@ Both functions are designed to provide seamless user interaction while maintaini
 2. Integrate Morpho and Euler to increase vault capacity.  
 3. Deploy the vault to mainnet.  
 4. Build a similar vault for cbBTC to DCA into BTC using Ethena yield.
-
 
 ## How to run locally
 
